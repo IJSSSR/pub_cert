@@ -379,25 +379,40 @@ fetch('https://ijsssr.github.io/pub_cert/certificate-data.json')
   .then(data => { certData = data; })
   .catch(err => console.error("Data file not found!", err));
 
+function showError(msg) {
+  alert(msg); // Simple alert, aap toast ya div me bhi dikha sakte hain
+}
+
 // Certificate No. se Paper ID auto fill
 document.getElementById("certNo").addEventListener("input", function(){
   const value = this.value.trim();
+  if(!value) return;
+
   const match = certData.find(d => d.certNo === value);
   if(match){
     document.getElementById("paperId").value = match.paperId;
+  } else {
+    document.getElementById("paperId").value = '';
+    showError("Invalid Certificate No. entered!");
   }
 });
 
 // Paper ID se Certificate No. auto fill
 document.getElementById("paperId").addEventListener("input", function(){
   const value = this.value.trim();
+  if(!value) return;
+
   const match = certData.find(d => d.paperId === value);
   if(match){
     document.getElementById("certNo").value = match.certNo;
+  } else {
+    document.getElementById("certNo").value = '';
+    showError("Invalid Paper ID entered!");
   }
 });
 </script>
 </body>
 </html>
+
 
 
