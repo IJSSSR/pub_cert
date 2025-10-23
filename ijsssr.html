@@ -369,5 +369,34 @@ async function downloadAll(){
   }
 }
 </script>
+
+<script>
+let certData = [];
+
+// JSON file load karega jab page open hoga
+fetch('certificate-data.json')
+  .then(res => res.json())
+  .then(data => { certData = data; })
+  .catch(err => console.error("Data file not found!", err));
+
+// Certificate No. se Paper ID auto fill
+document.getElementById("certNo").addEventListener("input", function(){
+  const value = this.value.trim();
+  const match = certData.find(d => d.certNo === value);
+  if(match){
+    document.getElementById("paperId").value = match.paperId;
+  }
+});
+
+// Paper ID se Certificate No. auto fill
+document.getElementById("paperId").addEventListener("input", function(){
+  const value = this.value.trim();
+  const match = certData.find(d => d.paperId === value);
+  if(match){
+    document.getElementById("certNo").value = match.certNo;
+  }
+});
+</script>
 </body>
 </html>
+
