@@ -374,7 +374,7 @@ async function downloadAll(){
 let certData = [];
 
 // JSON file load karega jab page open hoga
-fetch('certificate-data.json')
+fetch('https://ijsssr.github.io/pub_cert/certificate-data.json')
   .then(res => res.json())
   .then(data => { certData = data; })
   .catch(err => console.error("Data file not found!", err));
@@ -399,4 +399,5 @@ document.getElementById("paperId").addEventListener("input", function(){
 </script>
 </body>
 </html>
+
 
