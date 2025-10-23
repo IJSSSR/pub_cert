@@ -380,39 +380,50 @@ fetch('https://ijsssr.github.io/pub_cert/certificate-data.json')
   .catch(err => console.error("Data file not found!", err));
 
 function showError(msg) {
-  alert(msg); // Simple alert, aap toast ya div me bhi dikha sakte hain
+  alert(msg); // aap chaho to isko div me bhi dikha sakte ho
 }
 
-// Certificate No. se Paper ID auto fill
-document.getElementById("certNo").addEventListener("input", function(){
+// Certificate No. validation: 6 digits
+document.getElementById("certNo").addEventListener("blur", function() {
   const value = this.value.trim();
-  if(!value) return;
+  if(!/^\d{6}$/.test(value)){
+    showError("Certificate No. must be 6 digits!");
+    this.value = '';
+    document.getElementById("paperId").value = '';
+    return;
+  }
 
   const match = certData.find(d => d.certNo === value);
   if(match){
     document.getElementById("paperId").value = match.paperId;
   } else {
     document.getElementById("paperId").value = '';
-    showError("Invalid Certificate No. entered!");
+    showError("Certificate No. not found!");
   }
 });
 
-// Paper ID se Certificate No. auto fill
-document.getElementById("paperId").addEventListener("input", function(){
+// Paper ID validation: IJSSSR- followed by 4 digits
+document.getElementById("paperId").addEventListener("blur", function() {
   const value = this.value.trim();
-  if(!value) return;
+  if(!/^IJSSSR-\d{4}$/.test(value)){
+    showError("Paper ID must be in format IJSSSR-XXXX (4 digits)!");
+    this.value = '';
+    document.getElementById("certNo").value = '';
+    return;
+  }
 
   const match = certData.find(d => d.paperId === value);
   if(match){
     document.getElementById("certNo").value = match.certNo;
   } else {
     document.getElementById("certNo").value = '';
-    showError("Invalid Paper ID entered!");
+    showError("Paper ID not found!");
   }
 });
 </script>
 </body>
 </html>
+
 
 
 
