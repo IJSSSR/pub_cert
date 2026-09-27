@@ -446,7 +446,7 @@ async function generatePreviews() {
     const currentAff = affLines[i] || affLines[0] || "";
     const thisCertNo = authors.length > 1 ? `${certNo}-${i+1}` : certNo;
     
-    // Dates section HTML (sirf wahi dikhao jo filled hai)
+    // Dates section HTML - sirf filled dates hi dikhao
     let datesHTML = "";
     if(formattedSubmission) datesHTML += `<div><strong>Submission Date:</strong> ${formattedSubmission}</div>`;
     if(formattedAcceptance) datesHTML += `<div><strong>Acceptance Date:</strong> ${formattedAcceptance}</div>`;
@@ -575,7 +575,6 @@ async function createPDF(certData) {
     try {
       pdf.addImage(LOGO_IMAGE_BASE64, 'PNG', 40, 30, 70, 70);
     } catch(e) {
-      // Placeholder
       pdf.setDrawColor(200, 200, 200);
       pdf.setFillColor(250, 250, 250);
       pdf.roundedRect(40, 30, 70, 70, 5, 5, 'FD');
@@ -629,65 +628,53 @@ async function createPDF(certData) {
   // =========================================================
   
   let yPos = 350;
-  const lineHeight = 22; // अच्छी spacing
+  const lineHeight = 22;
   const normalColor = '#000000';
-  const highlightColor = '#002060'; // सिर्फ इन्हें ब्लू रखना है
+  const highlightColor = '#002060';
   
-  // Create the complete paragraph text
   const paragraphText = `This is to certify that ${certData.author}, ${certData.affiliation} has published a paper/article entitled "${certData.title}" in the issue Vol. ${certData.volume} No. ${certData.issue}, ${certData.quarter} ${certData.year} with paper ID ${certData.paperId}.`;
   
-  // Split text into lines - Font size 12 (थोड़ा बड़ा)
   pdf.setFontSize(12);
   
   const textLines = pdf.splitTextToSize(paragraphText, contentWidth);
   
-  // Print each line with proper highlighting
   for (let i = 0; i < textLines.length; i++) {
     const line = textLines[i];
     
-    // Check what this line contains and apply colors accordingly
     if (line.includes(certData.author) && !line.includes(certData.affiliation.substring(0, 15))) {
-      // Line contains author name (but not affiliation)
       const beforeAuthor = line.substring(0, line.indexOf(certData.author));
       const afterAuthor = line.substring(line.indexOf(certData.author) + certData.author.length);
       
-      // Before author - normal black
       pdf.setFont("Times", "normal");
       pdf.setTextColor(normalColor);
       pdf.text(beforeAuthor, margin, yPos);
       
-      // Author name - blue bold
       const beforeWidth = pdf.getTextWidth(beforeAuthor);
       pdf.setFont("Times", "bold");
       pdf.setTextColor(highlightColor);
       pdf.text(certData.author, margin + beforeWidth, yPos);
       
-      // After author - normal black
       const authorWidth = pdf.getTextWidth(certData.author);
       pdf.setFont("Times", "normal");
       pdf.setTextColor(normalColor);
       pdf.text(afterAuthor, margin + beforeWidth + authorWidth, yPos);
     }
     else if (line.includes(certData.affiliation.substring(0, 20)) && !line.includes('"' + certData.title.substring(0, 10))) {
-      // Line contains affiliation - blue bold
       pdf.setFont("Times", "bold");
       pdf.setTextColor(highlightColor);
       pdf.text(line, margin, yPos);
     }
     else if (line.includes('"' + certData.title.substring(0, 10))) {
-      // Line contains paper title - blue bold
       pdf.setFont("Times", "bold");
       pdf.setTextColor(highlightColor);
       pdf.text(line, margin, yPos);
     }
     else if (line.includes(`Vol. ${certData.volume}`) || line.includes(certData.paperId)) {
-      // Line contains issue details or paper ID - blue bold
       pdf.setFont("Times", "bold");
       pdf.setTextColor(highlightColor);
       pdf.text(line, margin, yPos);
     }
     else {
-      // Normal text - black
       pdf.setFont("Times", "normal");
       pdf.setTextColor(normalColor);
       pdf.text(line, margin, yPos);
@@ -697,15 +684,19 @@ async function createPDF(certData) {
   }
   
   // =========================================================
-  // DATES SECTION - Proper English Language Display
+  // DATES SECTION - Sirf filled dates display karo
   // =========================================================
   
   yPos += 15;
   
-  // Collect only the dates that are filled
+  // Collect only the dates that are filled (khali wale skip karo)
   const dateItems = [];
-  if(certData.submissionDate) dateItems.push({ label: "Submission Date", value: certData.submissionDate });
-  if(certData.acceptanceDate) dateItems.push({ label: "Acceptance Date", value: certData.acceptanceDate });
+  if(certData.submissionDate && certData.submissionDate.trim() !== "") {
+    dateItems.push({ label: "Submission Date", value: certData.submissionDate });
+  }
+  if(certData.acceptanceDate && certData.acceptanceDate.trim() !== "") {
+    dateItems.push({ label: "Acceptance Date", value: certData.acceptanceDate });
+  }
   dateItems.push({ label: "Publication Date", value: certData.publicationDate });
   
   // Box height based on number of dates
@@ -748,15 +739,11 @@ async function createPDF(certData) {
     dateY += 20;
   }
   
-  // Add some space before bottom section
-  yPos += boxHeight + 20;
-  
   // =========================================================
-  // BOTTOM SECTION - FIXED POSITION
+  // BOTTOM SECTION - FIXED POSITION (Hamesha page ke niche)
   // =========================================================
   
-  // Fixed bottom position
-  const bottomY = pageHeight - 120;
+  const bottomY = pageHeight - 130;
   
   // Left Editor (Dr. Ashish Kumar Shukla)
   if(SIGNATURE_1_BASE64) {
@@ -783,7 +770,7 @@ async function createPDF(certData) {
   pdf.setFontSize(10);
   pdf.text("editors@ijsssr.com", margin, bottomY + 50);
   
-  // QR Code
+  // QR Code - Fixed bottom center
   pdf.addImage(certData.qrDataURL, 'PNG', pageWidth/2 - 35, bottomY - 10, 65, 65);
   pdf.setTextColor(51, 51, 51);
   pdf.setFontSize(10);
