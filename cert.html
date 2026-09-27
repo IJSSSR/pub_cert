@@ -317,7 +317,6 @@ function formatDate(dateString) {
   const month = monthNames[date.getMonth()];
   const year = date.getFullYear();
   
-  // Day ke saath suffix (1st, 2nd, 3rd, 4th...)
   let suffix = "th";
   if(day === 1 || day === 21 || day === 31) suffix = "st";
   else if(day === 2 || day === 22) suffix = "nd";
@@ -395,7 +394,6 @@ function validateForm() {
   const publicationDate = document.getElementById("publicationDate").value;
   const qrLink = document.getElementById("qrLink").value.trim();
 
-  // Sirf Publication Date mandatory hai, baaki dates optional
   if(!certNo || !authors || !affiliations || !title || !paperId || !volume || !issue || !quarter || !year || !publicationDate || !qrLink){
     alert("All fields are mandatory except Submission Date and Acceptance Date. Please fill all required fields.");
     return false;
@@ -437,7 +435,6 @@ async function generatePreviews() {
   const acceptanceDate = document.getElementById("acceptanceDate").value;
   const publicationDate = document.getElementById("publicationDate").value;
   
-  // Formatted dates
   const formattedSubmission = formatDate(submissionDate);
   const formattedAcceptance = formatDate(acceptanceDate);
   const formattedPublication = formatDate(publicationDate);
@@ -446,7 +443,6 @@ async function generatePreviews() {
     const currentAff = affLines[i] || affLines[0] || "";
     const thisCertNo = authors.length > 1 ? `${certNo}-${i+1}` : certNo;
     
-    // Dates section HTML - sirf filled dates hi dikhao
     let datesHTML = "";
     if(formattedSubmission) datesHTML += `<div><strong>Submission Date:</strong> ${formattedSubmission}</div>`;
     if(formattedAcceptance) datesHTML += `<div><strong>Acceptance Date:</strong> ${formattedAcceptance}</div>`;
@@ -523,7 +519,6 @@ async function generateCertificatesData() {
     const currentAff = affLines[i] || affLines[0] || "";
     const thisCertNo = authors.length > 1 ? `${certNo}-${i+1}` : certNo;
     
-    // Generate QR Code
     const qrCanvas = document.createElement("canvas");
     await QRCode.toCanvas(qrCanvas, qrLink, { width: 100, margin: 1 });
     const qrDataURL = qrCanvas.toDataURL("image/png");
@@ -549,7 +544,7 @@ async function generateCertificatesData() {
 }
 
 // =========================================================
-// Create PDF - Natural Language + No Overlap
+// Create PDF - Natural Language + 1 Inch Gap Between Dates Box & Bottom Section
 // =========================================================
 async function createPDF(certData) {
   const { jsPDF } = window.jspdf;
@@ -565,15 +560,21 @@ async function createPDF(certData) {
   const margin = 50;
   const contentWidth = pageWidth - (margin * 2);
   
+  // 1 inch = 72px (at 72 DPI, jsPDF default)
+  const ONE_INCH = 72;
+  
   pdf.setFont("Times", "Roman");
   
   // =========================================================
   // BOTTOM SECTION POSITION - PEHLE CALCULATE KARO
   // =========================================================
-  const bottomSectionHeight = 120;
-  const bottomMargin = 40;
-  const bottomY = pageHeight - bottomSectionHeight - bottomMargin;
-  const importantDatesBoxMaxBottom = bottomY - 20;
+  const bottomSectionHeight = 100;      // signature + text + QR area
+  const bottomPageMargin = 40;          // page bottom se margin
+  const bottomY = pageHeight - bottomSectionHeight - bottomPageMargin;
+  
+  // =========================================================
+  // HEADER SECTION
+  // =========================================================
   
   // Logo
   if(LOGO_IMAGE_BASE64) {
@@ -593,6 +594,7 @@ async function createPDF(certData) {
   // ISSN
   pdf.setTextColor(0, 51, 102);
   pdf.setFontSize(11);
+  pdf.setFont("Times", "bold");
   pdf.text("ISSN: 2583-7877", pageWidth - 120, 50);
   
   // Journal Name
@@ -629,91 +631,50 @@ async function createPDF(certData) {
   pdf.text("CERTIFICATE OF PUBLICATION", pageWidth/2, 300, { align: 'center' });
   
   // =========================================================
-  // MAIN CONTENT - WORD-BY-WORD NATURAL LANGUAGE
+  // MAIN CONTENT - NATURAL LANGUAGE (Word-by-Word)
   // =========================================================
   
   const normalColor = [0, 0, 0];
   const highlightColor = [0, 32, 96];
   
-  // Build tokens: each token is { text, style }
-  // style: 'normal' | 'highlight'
+  // Build tokens: each token = { text, style }
   const tokens = [];
+  const addNormal = (str) => str.split(" ").forEach(w => tokens.push({ text: w, style: 'normal' }));
+  const addHighlight = (str) => str.split(" ").forEach(w => tokens.push({ text: w, style: 'highlight' }));
   
-  const addNormal = (str) => {
-    str.split(" ").forEach(w => tokens.push({ text: w, style: 'normal' }));
-  };
-  const addHighlight = (str) => {
-    str.split(" ").forEach(w => tokens.push({ text: w, style: 'highlight' }));
-  };
-  
-  // "This is to certify that "
   addNormal("This is to certify that");
-  
-  // Author name (highlighted)
   addHighlight(certData.author);
-  
-  // Comma
   tokens.push({ text: ",", style: 'normal' });
-  
-  // Affiliation (highlighted)
   addHighlight(certData.affiliation);
-  
-  // "has published a paper/article entitled"
   addNormal("has published a paper/article entitled");
-  
-  // Opening quote
   tokens.push({ text: '"', style: 'normal' });
-  
-  // Title (highlighted)
   addHighlight(certData.title);
-  
-  // Closing quote
   tokens.push({ text: '"', style: 'normal' });
-  
-  // "in the issue"
   addNormal("in the issue");
-  
-  // Issue details (highlighted)
   addHighlight(`Vol. ${certData.volume} No. ${certData.issue}, ${certData.quarter} ${certData.year}`);
-  
-  // "with paper ID"
   addNormal("with paper ID");
-  
-  // Paper ID (highlighted)
   addHighlight(certData.paperId);
-  
-  // Period
   tokens.push({ text: ".", style: 'normal' });
   
-  // =========================================================
-  // RENDER TOKENS WORD-BY-WORD WITH WRAPPING
-  // =========================================================
-  
+  // Render tokens
   pdf.setFontSize(12);
   let xPos = margin;
   let yPos = 350;
   const lineHeight = 22;
   const rightEdge = pageWidth - margin;
   
-  // Helper: check if token is punctuation that should not have space before
   const isPunctuation = (txt) => [',', '.', '"', ';', ':', '!', '?'].includes(txt);
   
   for(let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     
-    // Determine leading space
     let prefix = "";
-    if(i > 0) {
-      const prevToken = tokens[i-1];
-      // No space before punctuation
-      if(!isPunctuation(token.text)) {
-        prefix = " ";
-      }
+    if(i > 0 && !isPunctuation(token.text)) {
+      prefix = " ";
     }
     
     const fullText = prefix + token.text;
     
-    // Set font based on style
     if(token.style === 'highlight') {
       pdf.setFont("Times", "bold");
       pdf.setTextColor(highlightColor[0], highlightColor[1], highlightColor[2]);
@@ -724,13 +685,9 @@ async function createPDF(certData) {
     
     const textWidth = pdf.getTextWidth(fullText);
     
-    // Check wrap
     if(xPos + textWidth > rightEdge && xPos > margin) {
-      // Move to next line
       yPos += lineHeight;
       xPos = margin;
-      
-      // Render without leading space on new line
       pdf.text(token.text, xPos, yPos);
       xPos += pdf.getTextWidth(token.text);
     } else {
@@ -739,11 +696,12 @@ async function createPDF(certData) {
     }
   }
   
-  // Move yPos below paragraph
+  // Move below paragraph
   yPos += lineHeight + 15;
   
   // =========================================================
-  // DATES SECTION - Important Dates Box
+  // IMPORTANT DATES BOX - Position calculated so 1 inch gap always
+  // remains between box bottom and bottom section top
   // =========================================================
   
   const dateItems = [];
@@ -757,11 +715,20 @@ async function createPDF(certData) {
   
   const boxHeight = 30 + (dateItems.length * 20);
   
-  let datesBoxY = yPos;
+  // Bottom section ka top
+  const bottomSectionTop = bottomY - 30; // signature placeholder top
   
-  // Agar bottom section se overlap ho raha hai, toh upar shift karo
-  if(datesBoxY + boxHeight > importantDatesBoxMaxBottom) {
-    datesBoxY = importantDatesBoxMaxBottom - boxHeight;
+  // Important Dates box ki bottom = bottomSectionTop - 1 inch
+  const datesBoxBottom = bottomSectionTop - ONE_INCH;
+  
+  // Box ki top position
+  let datesBoxY = datesBoxBottom - boxHeight;
+  
+  // Agar paragraph ke baad ki jagah kam pad rahi hai, toh box ko forced position pe rakho
+  // (lekin 1 inch gap hamesha maintain karo)
+  if(datesBoxY < yPos) {
+    // Paragraph aur box ke beech gap kam karo, lekin 1 inch gap bottom se maintain karo
+    datesBoxY = datesBoxBottom - boxHeight;
   }
   
   // Dates box
