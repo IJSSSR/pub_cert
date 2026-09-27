@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IJSSSR Certificate Generator</title>
 <style>
-  /* Global Styles */
   body {
     font-family: "Times New Roman", serif;
     background-color: #f0f2f5;
@@ -20,7 +19,6 @@
     padding: 20px;
   }
 
-  /* Form Section */
   .form-section {
     background: #fff;
     padding: 30px 35px;
@@ -92,7 +90,6 @@
     margin-top: 25px;
   }
 
-  /* Preview Section */
   .preview-section {
     background: #fff;
     padding: 20px;
@@ -280,31 +277,13 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <script>
-// =========================================================
-// डेवलपर के लिए नोट (यूजर को नहीं दिखेगा):
-// 
-// लोगो लगाने के लिए - LOGO_IMAGE_BASE64 में base64 code डालें
-// वॉटरमार्क के लिए - WATERMARK_IMAGE_BASE64 में base64 code डालें
-// सिग्नेचर के लिए - SIGNATURE_1_BASE64 और SIGNATURE_2_BASE64 में base64 code डालें
-// =========================================================
-
-const LOGO_IMAGE_BASE64 = '';        // यहाँ लोगो का base64 डालें
-
-
-
-const WATERMARK_IMAGE_BASE64 = '';   // यहाँ वॉटरमार्क का base64 डालें
-
-
-
-const SIGNATURE_1_BASE64 = '';       // डॉ. अशोक कुमार शुक्ला का सिग्नेचर
-
-
-
-
-const SIGNATURE_2_BASE64 = '';       // डॉ. गगन प्रीत कौर का सिग्नेचर
+const LOGO_IMAGE_BASE64 = '';
+const WATERMARK_IMAGE_BASE64 = '';
+const SIGNATURE_1_BASE64 = '';
+const SIGNATURE_2_BASE64 = '';
 
 // =========================================================
-// Date Format Function - Proper English Date
+// Date Format Function
 // =========================================================
 function formatDate(dateString) {
   if(!dateString) return "";
@@ -335,11 +314,8 @@ fetch('https://ijsssr.github.io/pub_cert/certificate-data.json')
   .then(data => { certData = data; })
   .catch(err => console.error("Data file not found!", err));
 
-function showError(msg) {
-  alert(msg);
-}
+function showError(msg) { alert(msg); }
 
-// Certificate No. validation
 document.getElementById("certNo").addEventListener("blur", function() {
   const value = this.value.trim();
   if(value && !/^\d{6}$/.test(value)){
@@ -348,19 +324,16 @@ document.getElementById("certNo").addEventListener("blur", function() {
     document.getElementById("paperId").value = '';
     return;
   }
-
   if(value && certData.length > 0) {
     const match = certData.find(d => d.certNo === value);
-    if(match){
-      document.getElementById("paperId").value = match.paperId;
-    } else {
+    if(match){ document.getElementById("paperId").value = match.paperId; }
+    else {
       document.getElementById("paperId").value = '';
       showError("Certificate No. not found!");
     }
   }
 });
 
-// Paper ID validation
 document.getElementById("paperId").addEventListener("blur", function() {
   const value = this.value.trim();
   if(value && !/^IJSSSR-\d{4}$/.test(value)){
@@ -369,12 +342,10 @@ document.getElementById("paperId").addEventListener("blur", function() {
     document.getElementById("certNo").value = '';
     return;
   }
-
   if(value && certData.length > 0) {
     const match = certData.find(d => d.paperId === value);
-    if(match){
-      document.getElementById("certNo").value = match.certNo;
-    } else {
+    if(match){ document.getElementById("certNo").value = match.certNo; }
+    else {
       document.getElementById("certNo").value = '';
       showError("Paper ID not found!");
     }
@@ -398,17 +369,8 @@ function validateForm() {
     alert("All fields are mandatory except Submission Date and Acceptance Date. Please fill all required fields.");
     return false;
   }
-  
-  if(!/^\d{6}$/.test(certNo)) {
-    alert("Certificate No. must be 6 digits!");
-    return false;
-  }
-  
-  if(!/^IJSSSR-\d{4}$/.test(paperId)) {
-    alert("Paper ID must be in format IJSSSR-XXXX (4 digits)!");
-    return false;
-  }
-  
+  if(!/^\d{6}$/.test(certNo)) { alert("Certificate No. must be 6 digits!"); return false; }
+  if(!/^IJSSSR-\d{4}$/.test(paperId)) { alert("Paper ID must be in format IJSSSR-XXXX (4 digits)!"); return false; }
   return true;
 }
 
@@ -473,9 +435,6 @@ async function generatePreviews() {
   }
 }
 
-// =========================================================
-// Single PDF Download
-// =========================================================
 async function downloadSinglePDF(index) {
   const certificates = await generateCertificatesData();
   if(certificates && certificates[index]) {
@@ -483,21 +442,14 @@ async function downloadSinglePDF(index) {
   }
 }
 
-// =========================================================
-// All PDFs Download
-// =========================================================
 async function downloadAllPDFs() {
   if(!validateForm()) return;
-  
   const certificates = await generateCertificatesData();
   for(let i = 0; i < certificates.length; i++) {
     await createPDF(certificates[i]);
   }
 }
 
-// =========================================================
-// Generate Certificates Data
-// =========================================================
 async function generateCertificatesData() {
   const certNo = document.getElementById("certNo").value.trim();
   const authors = document.getElementById("authors").value.split(",").map(a => a.trim());
@@ -539,12 +491,11 @@ async function generateCertificatesData() {
       qrDataURL: qrDataURL
     });
   }
-  
   return certificates;
 }
 
 // =========================================================
-// Create PDF - Natural Language + 1 Inch Gap Between Dates Box & Bottom Section
+// Create PDF - Natural Language + Correct Order (No Overlap)
 // =========================================================
 async function createPDF(certData) {
   const { jsPDF } = window.jspdf;
@@ -560,17 +511,7 @@ async function createPDF(certData) {
   const margin = 50;
   const contentWidth = pageWidth - (margin * 2);
   
-  // 1 inch = 72px (at 72 DPI, jsPDF default)
-  const ONE_INCH = 72;
-  
   pdf.setFont("Times", "Roman");
-  
-  // =========================================================
-  // BOTTOM SECTION POSITION - PEHLE CALCULATE KARO
-  // =========================================================
-  const bottomSectionHeight = 100;      // signature + text + QR area
-  const bottomPageMargin = 40;          // page bottom se margin
-  const bottomY = pageHeight - bottomSectionHeight - bottomPageMargin;
   
   // =========================================================
   // HEADER SECTION
@@ -631,13 +572,12 @@ async function createPDF(certData) {
   pdf.text("CERTIFICATE OF PUBLICATION", pageWidth/2, 300, { align: 'center' });
   
   // =========================================================
-  // MAIN CONTENT - NATURAL LANGUAGE (Word-by-Word)
+  // MAIN PARAGRAPH - NATURAL LANGUAGE (Word-by-Word)
   // =========================================================
   
   const normalColor = [0, 0, 0];
   const highlightColor = [0, 32, 96];
   
-  // Build tokens: each token = { text, style }
   const tokens = [];
   const addNormal = (str) => str.split(" ").forEach(w => tokens.push({ text: w, style: 'normal' }));
   const addHighlight = (str) => str.split(" ").forEach(w => tokens.push({ text: w, style: 'highlight' }));
@@ -696,12 +636,19 @@ async function createPDF(certData) {
     }
   }
   
-  // Move below paragraph
-  yPos += lineHeight + 15;
+  // Paragraph khatam hone ke baad yPos update
+  const paragraphEndY = yPos + lineHeight;
   
   // =========================================================
-  // IMPORTANT DATES BOX - Position calculated so 1 inch gap always
-  // remains between box bottom and bottom section top
+  // BOTTOM SECTION POSITION - PEHLE CALCULATE (page ke bottom se fix)
+  // =========================================================
+  const bottomSectionHeight = 100;
+  const bottomPageMargin = 40;
+  const bottomY = pageHeight - bottomSectionHeight - bottomPageMargin;
+  const bottomSectionTop = bottomY - 30; // signature placeholder ka top
+  
+  // =========================================================
+  // IMPORTANT DATES BOX - Paragraph ke NICHE, Bottom section ke UPAR
   // =========================================================
   
   const dateItems = [];
@@ -715,23 +662,24 @@ async function createPDF(certData) {
   
   const boxHeight = 30 + (dateItems.length * 20);
   
-  // Bottom section ka top
-  const bottomSectionTop = bottomY - 30; // signature placeholder top
+  // Paragraph ke baad gap (30px), phir box start
+  let datesBoxY = paragraphEndY + 30;
   
-  // Important Dates box ki bottom = bottomSectionTop - 1 inch
-  const datesBoxBottom = bottomSectionTop - ONE_INCH;
+  // IMPORTANT: Box bottom kabhi bhi bottomSectionTop - 20 se neeche nahi jaana chahiye
+  const maxBoxBottom = bottomSectionTop - 20;
   
-  // Box ki top position
-  let datesBoxY = datesBoxBottom - boxHeight;
-  
-  // Agar paragraph ke baad ki jagah kam pad rahi hai, toh box ko forced position pe rakho
-  // (lekin 1 inch gap hamesha maintain karo)
-  if(datesBoxY < yPos) {
-    // Paragraph aur box ke beech gap kam karo, lekin 1 inch gap bottom se maintain karo
-    datesBoxY = datesBoxBottom - boxHeight;
+  if(datesBoxY + boxHeight > maxBoxBottom) {
+    // Agar box bottom section ke upar fit nahi ho raha, toh upar shift karo
+    datesBoxY = maxBoxBottom - boxHeight;
+    
+    // Aur agar upar shift karne se paragraph se overlap ho raha hai,
+    // toh paragraph ke baad hi rakh do (chhota gap)
+    if(datesBoxY < paragraphEndY + 10) {
+      datesBoxY = paragraphEndY + 10;
+    }
   }
   
-  // Dates box
+  // Dates box draw karo
   pdf.setDrawColor(0, 100, 0);
   pdf.setLineWidth(1);
   pdf.setFillColor(245, 250, 245);
@@ -827,7 +775,6 @@ async function createPDF(certData) {
   pdf.save(`${certData.certNo}.pdf`);
 }
 
-// Initialize
 window.onload = function() {
   document.getElementById("previewSection").style.display = "none";
 };
