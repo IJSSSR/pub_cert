@@ -568,6 +568,17 @@ async function createPDF(certData) {
   // Set font
   pdf.setFont("Times", "Roman");
   
+  // =========================================================
+  // BOTTOM SECTION POSITION - PEHLE CALCULATE KARO
+  // =========================================================
+  // Bottom section ki height (signature + text + QR + label)
+  const bottomSectionHeight = 130;
+  const bottomMargin = 40;
+  const bottomY = pageHeight - bottomSectionHeight - bottomMargin;
+  
+  // Important Dates box ke liye max available space
+  const importantDatesBoxMaxBottom = bottomY - 30; // bottom section se 30px upar tak
+  
   // Watermark (अगर दिया है तो)
   
   // Logo (अगर दिया है तो)
@@ -684,10 +695,9 @@ async function createPDF(certData) {
   }
   
   // =========================================================
-  // DATES SECTION - Sirf filled dates display karo
+  // DATES SECTION - Important Dates Box
+  // (Sirf filled dates display karo, aur bottom section se upar fit karo)
   // =========================================================
-  
-  yPos += 20;
   
   // Collect only the dates that are filled
   const dateItems = [];
@@ -702,25 +712,34 @@ async function createPDF(certData) {
   // Box height based on number of dates
   const boxHeight = 30 + (dateItems.length * 20);
   
+  // Box ki y position - text ke baad, lekin bottom section se upar
+  let datesBoxY = yPos + 20;
+  
+  // Agar datesBoxY + boxHeight bottom section se overlap kar raha hai,
+  // toh datesBoxY ko upar shift karo
+  if(datesBoxY + boxHeight > importantDatesBoxMaxBottom) {
+    datesBoxY = importantDatesBoxMaxBottom - boxHeight;
+  }
+  
   // Dates ko ek box me dikhana
   pdf.setDrawColor(0, 100, 0);
   pdf.setLineWidth(1);
   pdf.setFillColor(245, 250, 245);
-  pdf.roundedRect(margin, yPos, contentWidth, boxHeight, 5, 5, 'FD');
+  pdf.roundedRect(margin, datesBoxY, contentWidth, boxHeight, 5, 5, 'FD');
   
   // Title inside box
   pdf.setTextColor(0, 94, 0);
   pdf.setFontSize(13);
   pdf.setFont("Times", "bold");
-  pdf.text("Important Dates", pageWidth/2, yPos + 20, { align: 'center' });
+  pdf.text("Important Dates", pageWidth/2, datesBoxY + 20, { align: 'center' });
   
   // Divider line inside box
   pdf.setDrawColor(0, 100, 0);
   pdf.setLineWidth(0.5);
-  pdf.line(margin + 15, yPos + 28, pageWidth - margin - 15, yPos + 28);
+  pdf.line(margin + 15, datesBoxY + 28, pageWidth - margin - 15, datesBoxY + 28);
   
   // Dates display
-  let dateY = yPos + 48;
+  let dateY = datesBoxY + 48;
   pdf.setFontSize(12);
   
   for(let i = 0; i < dateItems.length; i++) {
@@ -741,14 +760,7 @@ async function createPDF(certData) {
   
   // =========================================================
   // BOTTOM SECTION - FIXED AT BOTTOM OF PAGE
-  // (Important Dates box ke baad proper gap ke saath)
   // =========================================================
-  
-  // Bottom section ki starting position - page ke bilkul niche se calculate
-  // A4 page height = 842px (approx), bottom margin 50px
-  // Signatures/QR ko page ke bottom se 40px upar rakhenge
-  const bottomSectionHeight = 100; // signature + text + QR ki total height
-  const bottomY = pageHeight - bottomSectionHeight - 40;
   
   // Left Editor (Dr. Ashish Kumar Shukla)
   if(SIGNATURE_1_BASE64) {
