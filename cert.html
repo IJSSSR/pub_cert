@@ -549,7 +549,7 @@ async function generateCertificatesData() {
 }
 
 // =========================================================
-// Create PDF with Fixed Bottom Section
+// Create PDF - Natural Language + No Overlap
 // =========================================================
 async function createPDF(certData) {
   const { jsPDF } = window.jspdf;
@@ -565,23 +565,17 @@ async function createPDF(certData) {
   const margin = 50;
   const contentWidth = pageWidth - (margin * 2);
   
-  // Set font
   pdf.setFont("Times", "Roman");
   
   // =========================================================
   // BOTTOM SECTION POSITION - PEHLE CALCULATE KARO
   // =========================================================
-  // Bottom section ki height (signature + text + QR + label)
-  const bottomSectionHeight = 130;
+  const bottomSectionHeight = 120;
   const bottomMargin = 40;
   const bottomY = pageHeight - bottomSectionHeight - bottomMargin;
+  const importantDatesBoxMaxBottom = bottomY - 20;
   
-  // Important Dates box ke liye max available space
-  const importantDatesBoxMaxBottom = bottomY - 30; // bottom section se 30px upar tak
-  
-  // Watermark (अगर दिया है तो)
-  
-  // Logo (अगर दिया है तो)
+  // Logo
   if(LOGO_IMAGE_BASE64) {
     try {
       pdf.addImage(LOGO_IMAGE_BASE64, 'PNG', 40, 30, 70, 70);
@@ -635,71 +629,123 @@ async function createPDF(certData) {
   pdf.text("CERTIFICATE OF PUBLICATION", pageWidth/2, 300, { align: 'center' });
   
   // =========================================================
-  // MAIN CONTENT
+  // MAIN CONTENT - WORD-BY-WORD NATURAL LANGUAGE
   // =========================================================
   
-  let yPos = 350;
-  const lineHeight = 22;
-  const normalColor = '#000000';
-  const highlightColor = '#002060';
+  const normalColor = [0, 0, 0];
+  const highlightColor = [0, 32, 96];
   
-  const paragraphText = `This is to certify that ${certData.author}, ${certData.affiliation} has published a paper/article entitled "${certData.title}" in the issue Vol. ${certData.volume} No. ${certData.issue}, ${certData.quarter} ${certData.year} with paper ID ${certData.paperId}.`;
+  // Build tokens: each token is { text, style }
+  // style: 'normal' | 'highlight'
+  const tokens = [];
+  
+  const addNormal = (str) => {
+    str.split(" ").forEach(w => tokens.push({ text: w, style: 'normal' }));
+  };
+  const addHighlight = (str) => {
+    str.split(" ").forEach(w => tokens.push({ text: w, style: 'highlight' }));
+  };
+  
+  // "This is to certify that "
+  addNormal("This is to certify that");
+  
+  // Author name (highlighted)
+  addHighlight(certData.author);
+  
+  // Comma
+  tokens.push({ text: ",", style: 'normal' });
+  
+  // Affiliation (highlighted)
+  addHighlight(certData.affiliation);
+  
+  // "has published a paper/article entitled"
+  addNormal("has published a paper/article entitled");
+  
+  // Opening quote
+  tokens.push({ text: '"', style: 'normal' });
+  
+  // Title (highlighted)
+  addHighlight(certData.title);
+  
+  // Closing quote
+  tokens.push({ text: '"', style: 'normal' });
+  
+  // "in the issue"
+  addNormal("in the issue");
+  
+  // Issue details (highlighted)
+  addHighlight(`Vol. ${certData.volume} No. ${certData.issue}, ${certData.quarter} ${certData.year}`);
+  
+  // "with paper ID"
+  addNormal("with paper ID");
+  
+  // Paper ID (highlighted)
+  addHighlight(certData.paperId);
+  
+  // Period
+  tokens.push({ text: ".", style: 'normal' });
+  
+  // =========================================================
+  // RENDER TOKENS WORD-BY-WORD WITH WRAPPING
+  // =========================================================
   
   pdf.setFontSize(12);
+  let xPos = margin;
+  let yPos = 350;
+  const lineHeight = 22;
+  const rightEdge = pageWidth - margin;
   
-  const textLines = pdf.splitTextToSize(paragraphText, contentWidth);
+  // Helper: check if token is punctuation that should not have space before
+  const isPunctuation = (txt) => [',', '.', '"', ';', ':', '!', '?'].includes(txt);
   
-  for (let i = 0; i < textLines.length; i++) {
-    const line = textLines[i];
+  for(let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
     
-    if (line.includes(certData.author) && !line.includes(certData.affiliation.substring(0, 15))) {
-      const beforeAuthor = line.substring(0, line.indexOf(certData.author));
-      const afterAuthor = line.substring(line.indexOf(certData.author) + certData.author.length);
-      
-      pdf.setFont("Times", "normal");
-      pdf.setTextColor(normalColor);
-      pdf.text(beforeAuthor, margin, yPos);
-      
-      const beforeWidth = pdf.getTextWidth(beforeAuthor);
-      pdf.setFont("Times", "bold");
-      pdf.setTextColor(highlightColor);
-      pdf.text(certData.author, margin + beforeWidth, yPos);
-      
-      const authorWidth = pdf.getTextWidth(certData.author);
-      pdf.setFont("Times", "normal");
-      pdf.setTextColor(normalColor);
-      pdf.text(afterAuthor, margin + beforeWidth + authorWidth, yPos);
-    }
-    else if (line.includes(certData.affiliation.substring(0, 20)) && !line.includes('"' + certData.title.substring(0, 10))) {
-      pdf.setFont("Times", "bold");
-      pdf.setTextColor(highlightColor);
-      pdf.text(line, margin, yPos);
-    }
-    else if (line.includes('"' + certData.title.substring(0, 10))) {
-      pdf.setFont("Times", "bold");
-      pdf.setTextColor(highlightColor);
-      pdf.text(line, margin, yPos);
-    }
-    else if (line.includes(`Vol. ${certData.volume}`) || line.includes(certData.paperId)) {
-      pdf.setFont("Times", "bold");
-      pdf.setTextColor(highlightColor);
-      pdf.text(line, margin, yPos);
-    }
-    else {
-      pdf.setFont("Times", "normal");
-      pdf.setTextColor(normalColor);
-      pdf.text(line, margin, yPos);
+    // Determine leading space
+    let prefix = "";
+    if(i > 0) {
+      const prevToken = tokens[i-1];
+      // No space before punctuation
+      if(!isPunctuation(token.text)) {
+        prefix = " ";
+      }
     }
     
-    yPos += lineHeight;
+    const fullText = prefix + token.text;
+    
+    // Set font based on style
+    if(token.style === 'highlight') {
+      pdf.setFont("Times", "bold");
+      pdf.setTextColor(highlightColor[0], highlightColor[1], highlightColor[2]);
+    } else {
+      pdf.setFont("Times", "normal");
+      pdf.setTextColor(normalColor[0], normalColor[1], normalColor[2]);
+    }
+    
+    const textWidth = pdf.getTextWidth(fullText);
+    
+    // Check wrap
+    if(xPos + textWidth > rightEdge && xPos > margin) {
+      // Move to next line
+      yPos += lineHeight;
+      xPos = margin;
+      
+      // Render without leading space on new line
+      pdf.text(token.text, xPos, yPos);
+      xPos += pdf.getTextWidth(token.text);
+    } else {
+      pdf.text(fullText, xPos, yPos);
+      xPos += textWidth;
+    }
   }
+  
+  // Move yPos below paragraph
+  yPos += lineHeight + 15;
   
   // =========================================================
   // DATES SECTION - Important Dates Box
-  // (Sirf filled dates display karo, aur bottom section se upar fit karo)
   // =========================================================
   
-  // Collect only the dates that are filled
   const dateItems = [];
   if(certData.submissionDate && certData.submissionDate.trim() !== "") {
     dateItems.push({ label: "Submission Date", value: certData.submissionDate });
@@ -709,48 +755,40 @@ async function createPDF(certData) {
   }
   dateItems.push({ label: "Publication Date", value: certData.publicationDate });
   
-  // Box height based on number of dates
   const boxHeight = 30 + (dateItems.length * 20);
   
-  // Box ki y position - text ke baad, lekin bottom section se upar
-  let datesBoxY = yPos + 20;
+  let datesBoxY = yPos;
   
-  // Agar datesBoxY + boxHeight bottom section se overlap kar raha hai,
-  // toh datesBoxY ko upar shift karo
+  // Agar bottom section se overlap ho raha hai, toh upar shift karo
   if(datesBoxY + boxHeight > importantDatesBoxMaxBottom) {
     datesBoxY = importantDatesBoxMaxBottom - boxHeight;
   }
   
-  // Dates ko ek box me dikhana
+  // Dates box
   pdf.setDrawColor(0, 100, 0);
   pdf.setLineWidth(1);
   pdf.setFillColor(245, 250, 245);
   pdf.roundedRect(margin, datesBoxY, contentWidth, boxHeight, 5, 5, 'FD');
   
-  // Title inside box
   pdf.setTextColor(0, 94, 0);
   pdf.setFontSize(13);
   pdf.setFont("Times", "bold");
   pdf.text("Important Dates", pageWidth/2, datesBoxY + 20, { align: 'center' });
   
-  // Divider line inside box
   pdf.setDrawColor(0, 100, 0);
   pdf.setLineWidth(0.5);
   pdf.line(margin + 15, datesBoxY + 28, pageWidth - margin - 15, datesBoxY + 28);
   
-  // Dates display
   let dateY = datesBoxY + 48;
   pdf.setFontSize(12);
   
   for(let i = 0; i < dateItems.length; i++) {
     const item = dateItems[i];
     
-    // Label - blue bold
     pdf.setFont("Times", "bold");
     pdf.setTextColor(0, 51, 102);
     pdf.text(`${item.label}:`, margin + 20, dateY);
     
-    // Value - black normal
     pdf.setFont("Times", "normal");
     pdf.setTextColor(0, 0, 0);
     pdf.text(item.value, margin + 160, dateY);
@@ -762,7 +800,7 @@ async function createPDF(certData) {
   // BOTTOM SECTION - FIXED AT BOTTOM OF PAGE
   // =========================================================
   
-  // Left Editor (Dr. Ashish Kumar Shukla)
+  // Left Editor
   if(SIGNATURE_1_BASE64) {
     try {
       pdf.addImage(SIGNATURE_1_BASE64, 'PNG', margin, bottomY - 30, 80, 30);
@@ -787,13 +825,13 @@ async function createPDF(certData) {
   pdf.setFontSize(10);
   pdf.text("editors@ijsssr.com", margin, bottomY + 50);
   
-  // QR Code - bottom center
+  // QR Code
   pdf.addImage(certData.qrDataURL, 'PNG', pageWidth/2 - 35, bottomY - 10, 65, 65);
   pdf.setTextColor(51, 51, 51);
   pdf.setFontSize(10);
   pdf.text("Verified Published Article", pageWidth/2, bottomY + 65, { align: 'center' });
   
-  // Right Editor (Dr. Gagan Prit Kaur)
+  // Right Editor
   if(SIGNATURE_2_BASE64) {
     try {
       pdf.addImage(SIGNATURE_2_BASE64, 'PNG', pageWidth - margin - 80, bottomY - 30, 80, 30);
@@ -818,7 +856,7 @@ async function createPDF(certData) {
   pdf.setFontSize(10);
   pdf.text("editorinchief@ijsssr.com", pageWidth - margin - 80, bottomY + 50);
   
-  // Save PDF
+  // Save
   pdf.save(`${certData.certNo}.pdf`);
 }
 
