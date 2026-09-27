@@ -392,12 +392,10 @@ async function generateCertificatesData() {
 async function createPDF(certData) {
   const { jsPDF } = window.jspdf;
   
-  // PROPER A4 SIZE - 210mm x 297mm converted to px at 72 DPI
-  // 210mm = 595.28px, 297mm = 841.89px
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'px',
-    format: [595.28, 841.89]  // Standard A4 size
+    format: [595.28, 841.89]
   });
   
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -410,18 +408,14 @@ async function createPDF(certData) {
   // =========================================================
   // BOTTOM SECTION - FIXED AT PAGE BOTTOM
   // =========================================================
-  // Signature/QR area ki height = 100px
-  // Page ke bottom se 30px margin
   const bottomSectionHeight = 100;
   const bottomPageMargin = 30;
   const bottomY = pageHeight - bottomSectionHeight - bottomPageMargin;
   const bottomSectionTopY = bottomY - 30;
-  
-  // Important Dates box ki maximum allowed bottom position
   const maxDatesBoxBottom = bottomSectionTopY - 30;
   
   // =========================================================
-  // HEADER SECTION
+  // HEADER SECTION (Same as before)
   // =========================================================
   
   // Logo
@@ -473,14 +467,16 @@ async function createPDF(certData) {
   pdf.text(`Certificate No.: ${certData.certNo}`, margin, 210);
   pdf.text(`Date: ${certData.publicationDate}`, pageWidth - margin - 120, 210);
   
-  // Certificate Header
+  // =========================================================
+  // CERTIFICATE OF PUBLICATION - NICHE SHIFT KIYA (260 → 285)
+  // =========================================================
   pdf.setTextColor(0, 94, 0);
   pdf.setFontSize(22);
   pdf.setFont("Times", "bold");
-  pdf.text("CERTIFICATE OF PUBLICATION", pageWidth/2, 260, { align: 'center' });
+  pdf.text("CERTIFICATE OF PUBLICATION", pageWidth/2, 285, { align: 'center' });
   
   // =========================================================
-  // MAIN PARAGRAPH - NATURAL LANGUAGE (Word-by-Word)
+  // MAIN PARAGRAPH - NICHE SHIFT + BADA FONT SIZE (12 → 14)
   // =========================================================
   
   const normalColor = [0, 0, 0];
@@ -504,10 +500,11 @@ async function createPDF(certData) {
   addHighlight(certData.paperId);
   tokens.push({ text: ".", style: 'normal' });
   
-  pdf.setFontSize(12);
+  // Font size bada kiya: 12 → 14
+  pdf.setFontSize(14);
   let xPos = margin;
-  let yPos = 300;
-  const lineHeight = 22;
+  let yPos = 340; // Certificate of Publication ke baad gap ke saath shuru
+  const lineHeight = 26; // Font bada hone ki wajah se line height bhi badhaya
   const rightEdge = pageWidth - margin;
   
   const isPunctuation = (txt) => [',', '.', '"', ';', ':', '!', '?'].includes(txt);
@@ -544,10 +541,10 @@ async function createPDF(certData) {
   }
   
   // Paragraph ke baad gap
-  const paragraphEndY = yPos + 20;
+  const paragraphEndY = yPos + 25;
   
   // =========================================================
-  // IMPORTANT DATES BOX
+  // IMPORTANT DATES BOX - NICHE SHIFT (paragraph ke saath)
   // =========================================================
   
   const dateItems = [];
@@ -559,10 +556,9 @@ async function createPDF(certData) {
   }
   dateItems.push({ label: "Publication Date", value: certData.publicationDate });
   
-  // Compact box - har date 18px, header 25px
   const boxHeight = 25 + (dateItems.length * 18) + 10;
   
-  let datesBoxY = paragraphEndY + 20;
+  let datesBoxY = paragraphEndY + 25; // Paragraph ke baad 25px gap
   
   // Agar bottom section se overlap ho raha hai, toh upar shift karo
   if(datesBoxY + boxHeight > maxDatesBoxBottom) {
