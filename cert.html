@@ -624,7 +624,7 @@ async function createPDF(certData) {
   pdf.text("CERTIFICATE OF PUBLICATION", pageWidth/2, 300, { align: 'center' });
   
   // =========================================================
-  // MAIN CONTENT - PERFECT FORMATTING
+  // MAIN CONTENT
   // =========================================================
   
   let yPos = 350;
@@ -687,9 +687,9 @@ async function createPDF(certData) {
   // DATES SECTION - Sirf filled dates display karo
   // =========================================================
   
-  yPos += 15;
+  yPos += 20;
   
-  // Collect only the dates that are filled (khali wale skip karo)
+  // Collect only the dates that are filled
   const dateItems = [];
   if(certData.submissionDate && certData.submissionDate.trim() !== "") {
     dateItems.push({ label: "Submission Date", value: certData.submissionDate });
@@ -719,7 +719,7 @@ async function createPDF(certData) {
   pdf.setLineWidth(0.5);
   pdf.line(margin + 15, yPos + 28, pageWidth - margin - 15, yPos + 28);
   
-  // Dates display - proper English language
+  // Dates display
   let dateY = yPos + 48;
   pdf.setFontSize(12);
   
@@ -740,10 +740,15 @@ async function createPDF(certData) {
   }
   
   // =========================================================
-  // BOTTOM SECTION - FIXED POSITION (Hamesha page ke niche)
+  // BOTTOM SECTION - FIXED AT BOTTOM OF PAGE
+  // (Important Dates box ke baad proper gap ke saath)
   // =========================================================
   
-  const bottomY = pageHeight - 130;
+  // Bottom section ki starting position - page ke bilkul niche se calculate
+  // A4 page height = 842px (approx), bottom margin 50px
+  // Signatures/QR ko page ke bottom se 40px upar rakhenge
+  const bottomSectionHeight = 100; // signature + text + QR ki total height
+  const bottomY = pageHeight - bottomSectionHeight - 40;
   
   // Left Editor (Dr. Ashish Kumar Shukla)
   if(SIGNATURE_1_BASE64) {
@@ -770,7 +775,7 @@ async function createPDF(certData) {
   pdf.setFontSize(10);
   pdf.text("editors@ijsssr.com", margin, bottomY + 50);
   
-  // QR Code - Fixed bottom center
+  // QR Code - bottom center
   pdf.addImage(certData.qrDataURL, 'PNG', pageWidth/2 - 35, bottomY - 10, 65, 65);
   pdf.setTextColor(51, 51, 51);
   pdf.setFontSize(10);
